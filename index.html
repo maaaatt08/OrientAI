@@ -322,9 +322,14 @@ let schoolResults = [];
 // ── PICK ──
 function pick(btn){
   const q = btn.dataset.q;
+  const wasSelected = btn.classList.contains('selected');
   document.querySelectorAll(`.choice-btn[data-q="${q}"]`).forEach(b=>b.classList.remove('selected'));
-  btn.classList.add('selected');
-  answers[q] = btn.dataset.v;
+  if(!wasSelected){
+    btn.classList.add('selected');
+    answers[q] = btn.dataset.v;
+  } else {
+    delete answers[q];
+  }
 }
 
 // ── NAVIGATION ──
