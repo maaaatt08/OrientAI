@@ -690,26 +690,35 @@ RÈGLES :
 - JSON pur uniquement, pas de texte autour`
 
   try{
-    const res=await fetch(API,{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        model:"claude-sonnet-4-6",
-        max_tokens:3000,
-        system:SYSTEM,
-        messages:[{role:"user",content:prompt}]
-      })
-    });
-    const data=await res.json();
-    if(data.error) throw new Error(data.error.message||"Erreur API");
-    const raw=(data.content||[]).map(b=>b.text||"").join("").trim();
-    const parsed=JSON.parse(raw.replace(/```json|```/g,"").trim());
-    schools=parsed.ecoles;
-    renderResults(parsed);
-  }catch(e){
-    document.getElementById("cards-wrap").innerHTML=`<div class="err">❌ ${e.message}<br><small>Réessaie dans quelques secondes.</small></div>`;
-    console.error(e);
-  }
+      const res = await fetch(API, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 4096,
+          system: SYSTEM,
+          messages: [{role: "user", content: prompt}]
+        })
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(()=>({}));
+        throw new Error(errData.error || "Erreur API");
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let raw = "";
+      while (true) {
+        const {done, value} = await reader.read();
+        if (done) break;
+        raw += decoder.decode(value, {stream: true});
+      }
+      const parsed = JSON.parse(raw.replace(/```json|```/g,"").trim());
+      schools = parsed.ecoles;
+      renderResults(parsed);
+    }catch(e){
+      document.getElementById("cards-wrap").innerHTML = `<div class="err">❌ ${e.message}<br><small>Réessaie dans quelques secondes.</small></div>`;
+      console.error(e);
+    }
 }
 
 function renderResults(data){
