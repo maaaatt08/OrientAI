@@ -733,108 +733,33 @@ function renderResults(data){
     </div>`).join("");
 }
 
-function showDetail(id){
-  const e=schools.find(s=>s.id===id);
-  if(!e) return;
-  goScreen(3);
-  document.getElementById("detail-wrap").innerHTML=`
-    <div class="dhead">
-      <div class="dhead-top">
-        <div class="dlogo">${e.emoji}</div>
-        <div>
-          <div class="sc-type">${x(e.type)} · ${x(e.ville)}</div>
-          <div class="dname">${x(e.nom)}</div>
-          <div class="dsub">${x(e.admission?.bac_requis||"")} · ${x(e.prix?.montant||"")}</div>
-        </div>
-      </div>
-      <div class="dmatch">✦ ${e.match}% de compatibilité avec ton profil</div>
-      <div class="ddesc">${x(e.description)}</div>
-    </div>
-    <div class="dgrid">
-      <div class="dbox">
-        <div class="dblabel">🎯 Admission</div>
-        ${(e.admission?.modalites||[]).map(m=>`<div class="adm-item"><div class="adm-dot"></div>${x(m)}</div>`).join("")}
-        <div class="adm-item"><div class="adm-dot" style="background:var(--amber)"></div><strong>${x(e.admission?.niveau||"")}</strong></div>
-        ${e.admission?.taux_admission?`<div class="adm-item"><div class="adm-dot" style="background:var(--green)"></div>Taux d'admission : ${x(e.admission.taux_admission)}</div>`:""}
-        ${(e.admission?.conditions||[]).length?`<div style="margin-top:.6rem">${e.admission.conditions.map(c=>`<div class="adm-item"><div class="adm-dot" style="background:var(--ink3)"></div><small>${x(c)}</small></div>`).join("")}</div>`:""}
-      </div>
-      <div class="dbox">
-        <div class="dblabel">📅 Dates clés</div>
-        ${e.admission?.dates?.ouverture?`<div class="adm-item"><div class="adm-dot"></div>Ouverture : ${x(e.admission.dates.ouverture)}</div>`:""}
-        ${e.admission?.dates?.limite?`<div class="adm-item"><div class="adm-dot" style="background:var(--red)"></div><strong>Date limite : ${x(e.admission.dates.limite)}</strong></div>`:""}
-        ${e.admission?.dates?.resultats?`<div class="adm-item"><div class="adm-dot" style="background:var(--green)"></div>Résultats : ${x(e.admission.dates.resultats)}</div>`:""}
-        ${e.admission?.dates?.rentree?`<div class="adm-item"><div class="adm-dot" style="background:var(--accent)"></div>Rentrée : ${x(e.admission.dates.rentree)}</div>`:""}
-      </div>
-      <div class="dbox">
-        <div class="dblabel">💶 Frais de scolarité</div>
-        <div class="price-main">${x(e.prix?.montant||"N/D")}</div>
-        <div class="price-note">${x(e.prix?.detail||"")}</div>
-        <div style="margin-top:.6rem;display:flex;gap:.4rem;flex-wrap:wrap">
-          ${e.prix?.bourse?`<span class="pill g">✓ Bourses dispo</span>`:""}
-          ${e.prix?.alternance?`<span class="pill b">✓ Alternance possible</span>`:""}
-        </div>
-      </div>
-      <div class="dbox">
-        <div class="dblabel">📊 Chiffres clés</div>
-        <div class="stats-row" style="grid-template-columns:1fr 1fr">
-          <div class="stat-item"><div class="stat-val">${x(e.stats?.insertion||"N/D")}</div><div class="stat-lbl">Insertion${e.stats?.delai?" ("+x(e.stats.delai)+")":""}</div></div>
-          <div class="stat-item"><div class="stat-val">${x(e.stats?.satisfaction||"N/D")}</div><div class="stat-lbl">Satisfaction</div></div>
-        </div>
-        <div class="stat-item" style="margin-top:.5rem"><div class="stat-val">${x(e.stats?.salaire||"N/D")}</div><div class="stat-lbl">Salaire débutant</div></div>
-        ${e.stats?.poursuite?`<p style="font-size:.78rem;color:var(--ink3);margin-top:.5rem">📈 ${x(e.stats.poursuite)}</p>`:""}
-      </div>
-      <div class="dbox full">
-        <div class="dblabel">🎓 Toutes les formations proposées</div>
-        <div class="plist">${(e.formations||[]).map(f=>`
-          <div class="pitem">
-            <div class="pitem-name"><span class="pill b" style="margin-right:.4rem">${x(f.niveau)} · ${x(f.duree)}</span>${x(f.nom)}</div>
-            <div class="pitem-det">${x(f.desc)}</div>
-          </div>`).join("")}
-        </div>
-      </div>
-      ${e.masters?.length?`
-      <div class="dbox full">
-        <div class="dblabel">🏅 Masters disponibles</div>
-        <div class="plist">${e.masters.map(m=>`
-          <div class="pitem">
-            <div class="pitem-name">${x(m.nom)} <span class="pill b" style="margin-left:.4rem">${x(m.duree)}</span></div>
-            <div class="pitem-det">${x(m.specialite)}${m.acces?" · "+x(m.acces):""}</div>
-          </div>`).join("")}
-        </div>
-      </div>`:""}
-      ${e.parcours?.length?`
-      <div class="dbox full">
-        <div class="dblabel">🗺️ Parcours & spécialisations</div>
-        <div class="plist">${e.parcours.map(p=>`
-          <div class="pitem"><div class="pitem-name">${x(p.nom)}</div><div class="pitem-det">${x(p.detail)}</div></div>`).join("")}
-        </div>
-      </div>`:""}
-      ${e.campus?.length>1?`
-      <div class="dbox full">
-        <div class="dblabel">📍 Campus</div>
-        <div class="mtags">${e.campus.map(c=>`<span class="mtag">📍 ${x(c)}</span>`).join("")}</div>
-      </div>`:""}
-      ${e.vie_campus?`
-      <div class="dbox full">
-        <div class="dblabel">🎉 Vie sur le campus</div>
-        <p style="font-size:.88rem;color:var(--ink2);line-height:1.65">${x(e.vie_campus)}</p>
-      </div>`:""}
-      <div class="dbox full">
-        <div class="dblabel">💼 Métiers accessibles</div>
-        <div class="mtags">${(e.metiers||[]).map(m=>`<span class="mtag">${x(m)}</span>`).join("")}</div>
-      </div>
-      <div class="dbox full">
-        <div class="dblabel">🔗 Liens officiels</div>
-        <div class="links-row">
-          ${e.liens?.site?`<a class="ext-link" href="${x(e.liens.site)}" target="_blank" rel="noopener">🌐 Site officiel ↗</a>`:""}
-          ${e.liens?.parcoursup?`<a class="ext-link" href="${x(e.liens.parcoursup)}" target="_blank" rel="noopener">📋 Parcoursup ↗</a>`:""}
-          ${e.liens?.admissions?`<a class="ext-link" href="${x(e.liens.admissions)}" target="_blank" rel="noopener">📝 Admissions ↗</a>`:""}
-          ${e.liens?.programme?`<a class="ext-link" href="${x(e.liens.programme)}" target="_blank" rel="noopener">📚 Programme ↗</a>`:""}
-        </div>
-      </div>
-    </div>`;
+Retourne UNIQUEMENT ce JSON valide sans markdown :
+
+{
+  "resume": "1 phrase sur le profil",
+  "total": 8,
+  "ecoles": [
+    {
+      "id": "slug",
+      "emoji": "🎓",
+      "type": "École de commerce|Université|IUT|BTS|École ingénieurs|Sciences Po|Autre",
+      "nom": "Nom officiel",
+      "ville": "Ville",
+      "match": 92,
+      "raison_match": "Pourquoi cette école correspond",
+      "tags": ["tag1","tag2"],
+      "stats": {"insertion": "90%"},
+      "prix": {"montant": "3800 euros/an"},
+      "admission": {"niveau": "Sélectif"}
+    }
+  ]
 }
 
+RÈGLES :
+- Liste TOUTES les écoles françaises réelles pertinentes pour ce profil (entre 5 et 12 selon la pertinence, pas de nombre fixe)
+- Respecte STRICTEMENT budget, géographie, type d'accès et bac
+- Bac pro = pas de prépa ni grandes écoles traditionnelles
+- JSON pur uniquement, pas de texte autour, pas de détails superflus
 function x(s){
   if(!s) return "";
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
