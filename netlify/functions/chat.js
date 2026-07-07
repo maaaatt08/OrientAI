@@ -17,7 +17,7 @@ export default async (req, context) => {
     return new Response(JSON.stringify({ error: 'Body reçu invalide' }), { status: 400, headers });
   }
 
-  if (!payload.max_tokens) payload.max_tokens = 4096;
+  if (!payload.max_tokens) payload.max_tokens = 8000;
   if (!payload.model) payload.model = 'claude-sonnet-4-6';
   payload.stream = true;
 
@@ -43,14 +43,16 @@ export default async (req, context) => {
   const stream = new ReadableStream({
     async start(controller) {
       let buffer = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop();
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
+      let stopReason = null;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
             const jsonStr = line.slice(6);
             if (jsonStr === '[DONE]') continue;
             try {
@@ -58,9 +60,20 @@ export default async (req, context) => {
               if (evt.type === 'content_block_delta' && evt.delta?.text) {
                 controller.enqueue(encoder.encode(evt.delta.text));
               }
+              if (evt.type === 'message_delta' && evt.delta?.stop_reason) {
+                stopReason = evt.delta.stop_reason;
+              }
+              if (evt.type === 'error') {
+                controller.enqueue(encoder.encode(`\n__STREAM_ERROR__:${JSON.stringify(evt.error)}`));
+              }
             } catch (e) {}
           }
         }
+        if (stopReason && stopReason !== 'end_turn') {
+          controller.enqueue(encoder.encode(`\n__STOP_REASON__:${stopReason}`));
+        }
+      } catch (err) {
+        controller.enqueue(encoder.encode(`\n__STREAM_ERROR__:${err.message}`));
       }
       controller.close();
     }
