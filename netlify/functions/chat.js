@@ -1,55 +1,70 @@
-exports.handler = async function(event) {
+export default async (req, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Content-Type': 'text/plain; charset=utf-8'
   };
 
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
-  if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+  if (req.method === 'OPTIONS') return new Response('', { status: 200, headers });
+  if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers });
+  if (!process.env.ANTHROPIC_KEY) return new Response(JSON.stringify({ error: 'ANTHROPIC_KEY manquante' }), { status: 500, headers });
 
-  // Vérifie la clé API dès le départ
-  if (!process.env.ANTHROPIC_KEY) {
-    return { statusCode: 500, headers, body: JSON.stringify({ error: 'ANTHROPIC_KEY manquante dans les variables Netlify' }) };
-  }
-
-  // Parse le body reçu, avec message clair si invalide
   let payload;
   try {
-    payload = JSON.parse(event.body);
+    payload = await req.json();
   } catch (e) {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Body reçu invalide (pas du JSON)', raw: event.body }) };
+    return new Response(JSON.stringify({ error: 'Body reçu invalide' }), { status: 400, headers });
   }
 
-  // S'assure que max_tokens est présent (Anthropic le refuse sinon)
-  if (!payload.max_tokens) payload.max_tokens = 1024;
-  if (!payload.model) payload.model = 'claude-sonnet-4-5';
+  if (!payload.max_tokens) payload.max_tokens = 4096;
+  if (!payload.model) payload.model = 'claude-sonnet-4-6';
+  payload.stream = true;
 
-  // Timeout de sécurité à 20s pour ne jamais rester bloqué
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000);
+  const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify(payload),
+  });
 
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-
-    const data = await response.json();
-    return { statusCode: response.status, headers, body: JSON.stringify(data) };
-  } catch (err) {
-    clearTimeout(timeout);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: err.name === 'AbortError' ? 'Timeout: Anthropic n\'a pas répondu en 20s' : err.message })
-    };
+  if (!anthropicRes.ok || !anthropicRes.body) {
+    const errText = await anthropicRes.text();
+    return new Response(JSON.stringify({ error: errText }), { status: anthropicRes.status, headers });
   }
+
+  const reader = anthropicRes.body.getReader();
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.slice(6);
+            if (jsonStr === '[DONE]') continue;
+            try {
+              const evt = JSON.parse(jsonStr);
+              if (evt.type === 'content_block_delta' && evt.delta?.text) {
+                controller.enqueue(encoder.encode(evt.delta.text));
+              }
+            } catch (e) {}
+          }
+        }
+      }
+      controller.close();
+    }
+  });
+
+  return new Response(stream, { status: 200, headers });
 };
