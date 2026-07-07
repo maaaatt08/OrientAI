@@ -649,8 +649,8 @@ async function analyser(){
 Retourne UNIQUEMENT ce JSON valide sans markdown :
 
 {
-  "resume": "2 phrases sur le profil",
-  "total": 5,
+  "resume": "1 phrase sur le profil",
+  "total": 8,
   "ecoles": [
     {
       "id": "slug",
@@ -661,33 +661,18 @@ Retourne UNIQUEMENT ce JSON valide sans markdown :
       "match": 92,
       "raison_match": "Pourquoi cette école correspond",
       "tags": ["tag1","tag2"],
-      "description": "2 phrases sur l'école",
-      "admission": {
-        "bac_requis": "Bac général",
-        "modalites": ["Parcoursup","Dossier"],
-        "niveau": "Sélectif",
-        "dates": {"limite": "Mars 2026", "rentree": "Septembre 2026"},
-        "taux_admission": "20%"
-      },
-      "prix": {"montant": "3800 euros/an", "bourse": true, "alternance": true},
-      "formations": [
-        {"niveau": "Bachelor", "nom": "Nom", "duree": "3 ans"},
-        {"niveau": "PGE", "nom": "Nom", "duree": "5 ans"},
-        {"niveau": "Master", "nom": "Nom", "duree": "2 ans"}
-      ],
-      "metiers": ["Métier 1","Métier 2","Métier 3"],
-      "stats": {"insertion": "90%", "salaire": "30000 euros/an"},
-      "liens": {"site": "https://nomecole.fr", "parcoursup": "https://parcoursup.fr"}
+      "stats": {"insertion": "90%"},
+      "prix": {"montant": "3800 euros/an"},
+      "admission": {"niveau": "Sélectif"}
     }
   ]
 }
 
 RÈGLES :
-- Exactement 5 écoles réelles françaises
-- Pour chaque école liste TOUTES ses formations (Bachelor + PGE + Masters si disponibles)
+- Liste TOUTES les écoles françaises réelles pertinentes pour ce profil (entre 5 et 12 selon la pertinence, pas de nombre fixe)
 - Respecte STRICTEMENT budget, géographie, type d'accès et bac
 - Bac pro = pas de prépa ni grandes écoles traditionnelles
-- JSON pur uniquement, pas de texte autour`
+- JSON pur uniquement, pas de texte autour, pas de détails superflus
 
   try{
       const res = await fetch(API, {
