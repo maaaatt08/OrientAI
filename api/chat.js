@@ -1,10 +1,17 @@
-module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+exports.handler = async function(event, context) {
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  };
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
+  }
+
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+  }
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -14,12 +21,11 @@ module.exports = async function handler(req, res) {
         'x-api-key': process.env.ANTHROPIC_KEY,
         'anthropic-version': '2023-06-01',
       },
-      body: JSON.stringify(req.body),
+      body: event.body,
     });
-
     const data = await response.json();
-    return res.status(response.status).json(data);
+    return { statusCode: response.status, headers, body: JSON.stringify(data) };
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
   }
-}
+};
